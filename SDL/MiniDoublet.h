@@ -2,9 +2,15 @@
 #define MiniDoublet_cuh
 #define OUTPUT_MD_CUTS
 
+#ifdef LST_IS_CMSSW_PACKAGE
+#include "RecoTracker/LSTCore/interface/alpaka/Constants.h"
+#include "RecoTracker/LSTCore/interface/alpaka/Module.h"
+#else
 #include "Constants.h"
-#include "EndcapGeometry.h"
 #include "Module.h"
+#endif
+
+#include "EndcapGeometry.h"
 #include "Hit.h"
 
 namespace SDL {
@@ -447,7 +453,7 @@ namespace SDL {
     float drprime_x;  // x-component of drprime
     float drprime_y;  // y-component of drprime
     const float& slope =
-        modulesInGPU.slopes[lowerModuleIndex];  // The slope of the possible strip hits for a given module in x-y plane
+        modulesInGPU.dxdys[lowerModuleIndex];  // The slope of the possible strip hits for a given module in x-y plane
     float absArctanSlope;
     float angleM;  // the angle M is the angle of rotation of the module in x-y plane if the possible strip hits are along the x-axis, then angleM = 0, and if the possible strip hits are along y-axis angleM = 90 degrees
     float absdzprime;  // The distance between the two points after shifting
@@ -649,7 +655,7 @@ namespace SDL {
                                                      float& shiftedX,
                                                      float& shiftedY,
                                                      float& shiftedZ,
-                                                     float& noshiftedDz,
+                                                     float& noShiftedDz,
                                                      float& noShiftedDphi,
                                                      float& noShiftedDphiChange,
                                                      float xLower,
@@ -721,6 +727,9 @@ namespace SDL {
         noShiftedDphi = SDL::deltaPhi(acc, xLower, yLower, xUpper, yUpper);
       }
     } else {
+      shiftedX = 0;
+      shiftedY = 0;
+      shiftedZ = 0;
       dPhi = SDL::deltaPhi(acc, xLower, yLower, xUpper, yUpper);
       noShiftedDphi = dPhi;
     }
@@ -763,7 +772,7 @@ namespace SDL {
     }
 
     pass = pass && (alpaka::math::abs(acc, dPhiChange) < miniCut);
-
+    noShiftedDz = 0;  // not used anywhere
     return pass;
   };
 
@@ -780,7 +789,7 @@ namespace SDL {
                                                      float& shiftedX,
                                                      float& shiftedY,
                                                      float& shiftedZ,
-                                                     float& noshiftedDz,
+                                                     float& noShiftedDz,
                                                      float& noShiftedDphi,
                                                      float& noShiftedDphichange,
                                                      float xLower,
@@ -881,7 +890,7 @@ namespace SDL {
     dPhiChange = dPhi / dzFrac * (1.f + dzFrac);
     noShiftedDphichange = noShiftedDphi / dzFrac * (1.f + dzFrac);
     pass = pass && (alpaka::math::abs(acc, dPhiChange) < miniCut);
-
+    noShiftedDz = 0;  // not used anywhere
     return pass;
   };
 
@@ -892,12 +901,8 @@ namespace SDL {
                                   struct SDL::hits hitsInGPU,
                                   struct SDL::miniDoublets mdsInGPU,
                                   struct SDL::objectRanges rangesInGPU) const {
-      using Dim = alpaka::Dim<TAcc>;
-      using Idx = alpaka::Idx<TAcc>;
-      using Vec = alpaka::Vec<Dim, Idx>;
-
-      Vec const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
-      Vec const gridThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
+      auto const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
+      auto const gridThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
 
       for (uint16_t lowerModuleIndex = globalThreadIdx[1]; lowerModuleIndex < (*modulesInGPU.nLowerModules);
            lowerModuleIndex += gridThreadExtent[1]) {
@@ -992,12 +997,8 @@ namespace SDL {
     ALPAKA_FN_ACC void operator()(TAcc const& acc,
                                   struct SDL::modules modulesInGPU,
                                   struct SDL::objectRanges rangesInGPU) const {
-      using Dim = alpaka::Dim<TAcc>;
-      using Idx = alpaka::Idx<TAcc>;
-      using Vec = alpaka::Vec<Dim, Idx>;
-
-      Vec const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
-      Vec const gridThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
+      auto const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
+      auto const gridThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
 
       // Initialize variables in shared memory and set to 0
       int& nTotalMDs = alpaka::declareSharedVar<int, __COUNTER__>(acc);
@@ -1088,12 +1089,8 @@ namespace SDL {
                                   struct SDL::miniDoublets mdsInGPU,
                                   struct SDL::objectRanges rangesInGPU,
                                   struct SDL::hits hitsInGPU) const {
-      using Dim = alpaka::Dim<TAcc>;
-      using Idx = alpaka::Idx<TAcc>;
-      using Vec = alpaka::Vec<Dim, Idx>;
-
-      Vec const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
-      Vec const gridThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
+      auto const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
+      auto const gridThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
 
       for (uint16_t i = globalThreadIdx[2]; i < *modulesInGPU.nLowerModules; i += gridThreadExtent[2]) {
         if (mdsInGPU.nMDs[i] == 0 or hitsInGPU.hitRanges[i * 2] == -1) {

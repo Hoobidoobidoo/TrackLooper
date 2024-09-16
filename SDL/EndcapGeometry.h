@@ -1,27 +1,50 @@
 #ifndef EndcapGeometry_h
 #define EndcapGeometry_h
 
-#include <vector>
 #include <map>
 #include <iostream>
 #include <fstream>
 #include <sstream>
 #include <string>
 #include <vector>
+#include <stdexcept>
 
+#ifdef LST_IS_CMSSW_PACKAGE
+#include "RecoTracker/LSTCore/interface/alpaka/Constants.h"
+#else
 #include "Constants.h"
+#endif
+
+#include "HeterogeneousCore/AlpakaInterface/interface/host.h"
 
 namespace SDL {
-  class EndcapGeometry {
-  private:
-    std::map<unsigned int, float> avgr2s_;
-    std::map<unsigned int, float> yls_;            // lower hits
-    std::map<unsigned int, float> sls_;            // lower slope
-    std::map<unsigned int, float> yus_;            // upper hits
-    std::map<unsigned int, float> sus_;            // upper slope
-    std::map<unsigned int, float> centroid_rs_;    // centroid r
+
+  // FIXME: Need to separate this better into host and device classes
+  // This is only needed for host, but we template it to avoid symbol conflicts
+  template <typename TDev>
+  class EndcapGeometryHost;
+
+  template <>
+  class EndcapGeometryHost<Dev> {
+  public:
+    std::map<unsigned int, float> dxdy_slope_;     // dx/dy slope
     std::map<unsigned int, float> centroid_phis_;  // centroid phi
-    std::map<unsigned int, float> centroid_zs_;    // centroid z
+
+    EndcapGeometryHost() = default;
+    ~EndcapGeometryHost() = default;
+
+    void load(std::string);
+    float getdxdy_slope(unsigned int detid) const;
+  };
+
+  template <typename TDev>
+  class EndcapGeometry;
+
+  template <>
+  class EndcapGeometry<Dev> {
+  private:
+    std::map<unsigned int, float> dxdy_slope_;     // dx/dy slope
+    std::map<unsigned int, float> centroid_phis_;  // centroid phi
 
   public:
     Buf<SDL::Dev, unsigned int> geoMapDetId_buf;
@@ -29,25 +52,12 @@ namespace SDL {
 
     unsigned int nEndCapMap;
 
-    EndcapGeometry(unsigned int sizef = endcap_size);
-    EndcapGeometry(std::string filename, unsigned int sizef = endcap_size);
-    ~EndcapGeometry();
+    EndcapGeometry(Dev const& devAccIn, QueueAcc& queue, SDL::EndcapGeometryHost<Dev> const& endcapGeometryIn);
+    ~EndcapGeometry() = default;
 
-    void load(std::string);
-
-    void fillGeoMapArraysExplicit();
-    void CreateGeoMapArraysExplicit();
-    float getAverageR2(unsigned int detid);
-    float getYInterceptLower(unsigned int detid);
-    float getSlopeLower(unsigned int detid);
-    float getYInterceptUpper(unsigned int detid);
-    float getSlopeUpper(unsigned int detid);
-    float getCentroidR(unsigned int detid);
-    float getCentroidPhi(unsigned int detid);
-    float getCentroidZ(unsigned int detid);
+    void fillGeoMapArraysExplicit(QueueAcc& queue);
+    float getdxdy_slope(unsigned int detid) const;
   };
-  void freeEndcap();
-  extern EndcapGeometry* endcapGeometry;
 }  // namespace SDL
 
 #endif

@@ -6,33 +6,47 @@
 CCSOURCES=$(filter-out LST.cc, $(wildcard *.cc))
 CCOBJECTS_CPU=$(CCSOURCES:.cc=_cpu.o)
 CCOBJECTS_CUDA=$(CCSOURCES:.cc=_cuda.o)
+CCOBJECTS_ROCM=$(CCSOURCES:.cc=_rocm.o)
 
 LSTSOURCES=LST.cc
 LSTOBJECTS_CPU=$(LSTSOURCES:.cc=_cpu.o)
 LSTOBJECTS_CUDA=$(LSTSOURCES:.cc=_cuda.o)
+LSTOBJECTS_ROCM=$(LSTSOURCES:.cc=_rocm.o)
 
-LIB_CUDA=libsdl_cuda.so
-LIB_CPU=libsdl_cpu.so
-
-ifeq ($(BACKEND), cpu)
-  LIB_CUDA=
-else ifeq ($(BACKEND), cuda)
-  LIB_CPU=
+# Default to CPU and CUDA backends
+ifeq ($(BACKEND),)
+  LIB_CPU=libsdl_cpu.so
+  LIB_CUDA=libsdl_cuda.so
 endif
 
-LIBS=$(LIB_CUDA) $(LIB_CPU)
+ifneq ($(findstring cpu,$(BACKEND)),)
+  LIB_CPU=libsdl_cpu.so
+endif
+ifneq ($(findstring cuda,$(BACKEND)),)
+  LIB_CUDA=libsdl_cuda.so
+endif
+ifneq ($(findstring rocm,$(BACKEND)),)
+  LIB_ROCM=libsdl_rocm.so
+endif
+ifneq ($(findstring all,$(BACKEND)),)
+  LIB_CPU=libsdl_cpu.so
+  LIB_CUDA=libsdl_cuda.so
+  LIB_ROCM=libsdl_rocm.so
+endif
+
+LIBS=$(LIB_CPU) $(LIB_CUDA) $(LIB_ROCM)
 
 #
 # flags to keep track of
 #
 
 # Different architectures to optimize for
-GENCODE_SM70 := -gencode arch=compute_70,code=[sm_70,compute_70]
-GENCODE_SM89 := -gencode arch=compute_89,code=[sm_89,compute_89]
+GENCODE_CUDA := -gencode arch=compute_70,code=[sm_70,compute_70] -gencode arch=compute_89,code=[sm_89,compute_89]
 
 CXX                  = g++
 CXXFLAGS_CPU         = -march=native -mtune=native -Ofast -fno-reciprocal-math -fopenmp-simd -g -Wall -Wshadow -Woverloaded-virtual -fPIC -fopenmp -I..
-CXXFLAGS_CUDA        = -O3 -g --compiler-options -Wall --compiler-options -Wshadow --compiler-options -Woverloaded-virtual --compiler-options -fPIC --compiler-options -fopenmp -dc -lineinfo --ptxas-options=-v --cudart shared $(GENCODE_SM70) $(GENCODE_SM89) --use_fast_math --default-stream per-thread -I..
+CXXFLAGS_CUDA        = -O3 -g --compiler-options -Wall --compiler-options -Wshadow --compiler-options -Woverloaded-virtual --compiler-options -fPIC --compiler-options -fopenmp -dc -lineinfo --ptxas-options=-v --cudart shared $(GENCODE_CUDA) --use_fast_math --default-stream per-thread -I..
+CXXFLAGS_ROCM        = -O3 -g -Wall -Wshadow -Woverloaded-virtual -fPIC -I${ROCM_ROOT}/include -I..
 CMSSWINCLUDE        := -I${CMSSW_BASE}/src
 ifdef CMSSW_RELEASE_BASE
 CMSSWINCLUDE        := ${CMSSWINCLUDE} -I${CMSSW_RELEASE_BASE}/src
@@ -40,7 +54,9 @@ endif
 ALPAKAINCLUDE        = -I${ALPAKA_ROOT}/include -I/${BOOST_ROOT}/include -std=c++17 ${CMSSWINCLUDE}
 ALPAKASERIAL         = -DALPAKA_ACC_CPU_B_SEQ_T_SEQ_ENABLED
 ALPAKACUDA           = -DALPAKA_ACC_GPU_CUDA_ENABLED -DALPAKA_ACC_GPU_CUDA_ONLY --expt-relaxed-constexpr
-ROOTCFLAGS           = -pthread -m64 -I$(ROOT_ROOT)/include
+ALPAKAROCM           = -DALPAKA_ACC_GPU_HIP_ENABLED -DALPAKA_ACC_GPU_HIP_ONLY -DALPAKA_DISABLE_VENDOR_RNG
+ROOTINCLUDE          = -I$(ROOT_ROOT)/include
+ROOTCFLAGS           = -pthread -m64 $(ROOTINCLUDE)
 PRINTFLAG            = -DT4FromT3
 DUPLICATES           = -DDUP_pLS -DDUP_T5 -DDUP_pT5 -DDUP_pT3 -DCrossclean_T5 -DCrossclean_pT3 #-DFP16_Base
 CACHEFLAG            =
@@ -48,8 +64,12 @@ PTCUTFLAG            =
 LSTWARNINGSFLAG      =
 CMSSW_WERRORS_CPU    = -Werror=pointer-arith -Werror=overlength-strings -Werror=return-type -Werror=missing-braces -Werror=unused-value -Werror=unused-label \
                        -Werror=address -Werror=format -Werror=sign-compare -Werror=write-strings -Werror=delete-non-virtual-dtor -Werror=strict-aliasing -Werror=narrowing \
-					   -Werror=unused-but-set-variable -Werror=reorder -Werror=unused-variable -Werror=conversion-null -Werror=return-local-addr -Wnon-virtual-dtor -Werror=switch
+                       -Werror=unused-but-set-variable -Werror=reorder -Werror=unused-variable -Werror=conversion-null -Werror=return-local-addr -Wnon-virtual-dtor -Werror=switch \
+                       -Werror=main -Werror=overflow -Werror=format-contains-nul -Werror=type-limits -Wreturn-type -Wextra -Wpessimizing-move -Wclass-memaccess -Wunused \
+                       -Wparentheses -Wno-vla -Wno-non-template-friend -Wno-long-long -Wno-cast-function-type -Wno-unused-but-set-parameter -Wno-ignored-qualifiers \
+                       -Wno-unused-parameter -Wno-unused-local-typedefs -Wno-attributes
 CMSSW_WERRORS_CUDA   = $(patsubst %,-Xcompiler %,$(CMSSW_WERRORS_CPU))
+CMSSW_WERRORS_ROCM   = $(CMSSW_WERRORS_CPU)
 CACHEFLAG_FLAGS      = -DCACHE_ALLOC
 T5CUTFLAGS           = $(T5DNNFLAG) $(T5RZCHI2FLAG) $(T5RPHICHI2FLAG)
 
@@ -59,34 +79,35 @@ ALPAKABACKEND_CPU    = $(ALPAKASERIAL)
 COMPILE_CMD_CPU      = $(LD_CPU) -c
 
 LD_CUDA              = nvcc
-SOFLAGS_CUDA         = -g -shared --compiler-options -fPIC --cudart shared $(GENCODE_SM70) $(GENCODE_SM89)
+SOFLAGS_CUDA         = -g -shared --compiler-options -fPIC --cudart shared $(GENCODE_CUDA)
 ALPAKABACKEND_CUDA   = $(ALPAKACUDA)
 COMPILE_CMD_CUDA     = $(LD_CUDA) -x cu
+
+LD_ROCM              = hipcc
+SOFLAGS_ROCM         = -g -shared -fPIC
+ALPAKABACKEND_ROCM   = $(ALPAKAROCM)
+COMPILE_CMD_ROCM     = $(LD_ROCM) -c
 
 CUTVALUEFLAG =
 CUTVALUEFLAG_FLAGS = -DCUT_VALUE_DEBUG
 
-LST_cpu.o: LST.cc
-	 $(CXX) -c $(CXXFLAGS_CPU) $(ROOTLIBS) $(PRINTFLAG) $(CACHEFLAG) $(DUPLICATES) $(LSTWARNINGSFLAG) $(CMSSW_WERRORS_CPU) $(ROOTCFLAGS) $(ALPAKAINCLUDE) $(PTCUTFLAG) $(ALPAKASERIAL) $< -o $@
-
-LST_cuda.o: LST.cc
-	 $(CXX) -c $(CXXFLAGS_CPU) $(ROOTLIBS) $(PRINTFLAG) $(CACHEFLAG) $(DUPLICATES) $(LSTWARNINGSFLAG) $(CMSSW_WERRORS_CPU) $(ROOTCFLAGS) $(ALPAKAINCLUDE) $(PTCUTFLAG) $(ALPAKASERIAL) $< -o $@
-
 %_cpu.o: %.cc
-	$(COMPILE_CMD_CPU) $(CXXFLAGS_CPU) $(PRINTFLAG) $(CACHEFLAG) $(CUTVALUEFLAG) $(LSTWARNINGSFLAG) $(CMSSW_WERRORS_CPU) $(T5CUTFLAGS) $(NOPLSDUPCLEANFLAG) $(TCPLSTRIPLETSFLAG) $(PTCUTFLAG) $(DUPLICATES) $(ALPAKAINCLUDE) $(ALPAKABACKEND_CPU) $< -o $@
+	$(COMPILE_CMD_CPU) $(CXXFLAGS_CPU) $(ROOTINCLUDE) $(PRINTFLAG) $(CACHEFLAG) $(CUTVALUEFLAG) $(LSTWARNINGSFLAG) $(CMSSW_WERRORS_CPU) $(T5CUTFLAGS) $(NOPLSDUPCLEANFLAG) $(TCPLSTRIPLETSFLAG) $(PTCUTFLAG) $(DUPLICATES) $(ALPAKAINCLUDE) $(ALPAKABACKEND_CPU) $< -o $@
 
 %_cuda.o: %.cc
-	$(COMPILE_CMD_CUDA) $(CXXFLAGS_CUDA) $(PRINTFLAG) $(CACHEFLAG) $(CUTVALUEFLAG) $(LSTWARNINGSFLAG) $(CMSSW_WERRORS_CUDA) $(T5CUTFLAGS) $(NOPLSDUPCLEANFLAG) $(TCPLSTRIPLETSFLAG) $(PTCUTFLAG) $(DUPLICATES) $(ALPAKAINCLUDE) $(ALPAKABACKEND_CUDA) $< -o $@
+	$(COMPILE_CMD_CUDA) $(CXXFLAGS_CUDA) $(ROOTINCLUDE) $(PRINTFLAG) $(CACHEFLAG) $(CUTVALUEFLAG) $(LSTWARNINGSFLAG) $(CMSSW_WERRORS_CUDA) $(T5CUTFLAGS) $(NOPLSDUPCLEANFLAG) $(TCPLSTRIPLETSFLAG) $(PTCUTFLAG) $(DUPLICATES) $(ALPAKAINCLUDE) $(ALPAKABACKEND_CUDA) $< -o $@
 
-$(LIB_CUDA): $(CCOBJECTS_CUDA) $(LSTOBJECTS_CUDA)
-	$(LD_CUDA) $(SOFLAGS_CUDA) $^ -o $@
-	mkdir -p cuda
-	ln -sf ../$@ cuda/$(@:_cuda.so=.so)
+%_rocm.o: %.cc
+	$(COMPILE_CMD_ROCM) $(CXXFLAGS_ROCM) $(ROOTINCLUDE) $(PRINTFLAG) $(CACHEFLAG) $(CUTVALUEFLAG) $(LSTWARNINGSFLAG) $(CMSSW_WERRORS_ROCM) $(T5CUTFLAGS) $(NOPLSDUPCLEANFLAG) $(TCPLSTRIPLETSFLAG) $(PTCUTFLAG) $(DUPLICATES) $(ALPAKAINCLUDE) $(ALPAKABACKEND_ROCM) $< -o $@
 
 $(LIB_CPU): $(CCOBJECTS_CPU) $(LSTOBJECTS_CPU)
 	$(LD_CPU) $(SOFLAGS_CPU) $^ -o $@
-	mkdir -p cpu
-	ln -sf ../$@ cpu/$(@:_cpu.so=.so)
+
+$(LIB_CUDA): $(CCOBJECTS_CUDA) $(LSTOBJECTS_CUDA)
+	$(LD_CUDA) $(SOFLAGS_CUDA) $^ -o $@
+
+$(LIB_ROCM): $(CCOBJECTS_ROCM) $(LSTOBJECTS_ROCM)
+	$(LD_ROCM) $(SOFLAGS_ROCM) $^ -o $@
 
 explicit: $(LIBS)
 
@@ -102,8 +123,6 @@ clean:
 	rm -f *.o
 	rm -f *.d
 	rm -f *.so
-	rm -rf cpu/
-	rm -rf cuda/
 
 .PHONY: clean explicit explicit_cache explicit_cache_cutvalue format check check-fix
 

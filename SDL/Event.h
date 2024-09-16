@@ -1,8 +1,17 @@
 #ifndef Event_cuh
 #define Event_cuh
 
-#include "Hit.h"
+#ifdef LST_IS_CMSSW_PACKAGE
+#include "RecoTracker/LSTCore/interface/alpaka/Constants.h"
+#include "RecoTracker/LSTCore/interface/alpaka/Module.h"
+#include "RecoTracker/LSTCore/interface/alpaka/LST.h"
+#else
+#include "Constants.h"
 #include "Module.h"
+#include "LST.h"
+#endif
+
+#include "Hit.h"
 #include "ModuleMethods.h"
 #include "Segment.h"
 #include "Triplet.h"
@@ -11,12 +20,19 @@
 #include "MiniDoublet.h"
 #include "PixelTriplet.h"
 #include "TrackCandidate.h"
-#include "Constants.h"
+
+#include "HeterogeneousCore/AlpakaInterface/interface/host.h"
 
 namespace SDL {
-  class Event {
+  template <typename TAcc>
+  class Event {};
+
+  template <>
+  class Event<SDL::Acc> {
   private:
     QueueAcc queue;
+    Dev devAcc;
+    DevHost devHost;
     bool addObjects;
 
     std::array<unsigned int, 6> n_hits_by_layer_barrel_;
@@ -61,7 +77,6 @@ namespace SDL {
     tripletsBuffer<alpaka::DevCpu>* tripletsInCPU;
     trackCandidatesBuffer<alpaka::DevCpu>* trackCandidatesInCPU;
     modulesBuffer<alpaka::DevCpu>* modulesInCPU;
-    modulesBuffer<alpaka::DevCpu>* modulesInCPUFull;
     quintupletsBuffer<alpaka::DevCpu>* quintupletsInCPU;
     pixelTripletsBuffer<alpaka::DevCpu>* pixelTripletsInCPU;
     pixelQuintupletsBuffer<alpaka::DevCpu>* pixelQuintupletsInCPU;
@@ -71,12 +86,27 @@ namespace SDL {
     int* superbinCPU;
     int8_t* pixelTypeCPU;
 
+    // Stuff that used to be global
+    const uint16_t nModules_;
+    const uint16_t nLowerModules_;
+    const unsigned int nPixels_;
+    const std::shared_ptr<const modulesBuffer<Dev>> modulesBuffers_;
+    const std::shared_ptr<const pixelMap> pixelMapping_;
+    const std::shared_ptr<const EndcapGeometry<Dev>> endcapGeometry_;
+
   public:
-    // Standalone constructor that has each event object create its own queue.
-    Event(bool verbose);
     // Constructor used for CMSSW integration. Uses an external queue.
     template <typename TQueue>
-    Event(bool verbose, const TQueue& q) : queue(q) {
+    Event(bool verbose, TQueue const& q, const LSTESDeviceData<Dev>* deviceESData)
+        : queue(q),
+          devAcc(alpaka::getDev(q)),
+          devHost(cms::alpakatools::host()),
+          nModules_(deviceESData->nModules),
+          nLowerModules_(deviceESData->nLowerModules),
+          nPixels_(deviceESData->nPixels),
+          modulesBuffers_(deviceESData->modulesBuffers),
+          pixelMapping_(deviceESData->pixelMapping),
+          endcapGeometry_(deviceESData->endcapGeometry) {
       init(verbose);
     }
     void resetEvent();
@@ -106,7 +136,7 @@ namespace SDL {
                                 std::vector<int8_t> pixelType,
                                 std::vector<char> isQuad);
 
-    /*functions that map the objects to the appropriate modules*/
+    // functions that map the objects to the appropriate modules
     void addMiniDoubletsToEventExplicit();
     void addSegmentsToEventExplicit();
     void addTripletsToEventExplicit();
@@ -171,20 +201,8 @@ namespace SDL {
     trackCandidatesBuffer<alpaka::DevCpu>* getTrackCandidatesInCMSSW();
     pixelTripletsBuffer<alpaka::DevCpu>* getPixelTriplets();
     pixelQuintupletsBuffer<alpaka::DevCpu>* getPixelQuintuplets();
-    modulesBuffer<alpaka::DevCpu>* getModules();
-    modulesBuffer<alpaka::DevCpu>* getFullModules();
+    modulesBuffer<alpaka::DevCpu>* getModules(bool isFull = false);
   };
 
-  //global stuff
-  extern SDL::modules* modulesInGPU;
-  extern SDL::modulesBuffer<Dev>* modulesBuffers;
-  extern SDL::modulesBuffer<Dev> const* modulesBuffersES;  // not owned const buffers
-  extern uint16_t nModules;
-  extern uint16_t nLowerModules;
-  void initModules(const char* moduleMetaDataFilePath = "data/centroid.txt");  //read from file and init
-  void freeModules();
-  void initModulesHost();  //read from file and init
-  extern std::shared_ptr<SDL::pixelMap> pixelMapping;
-  unsigned int getBackend();
 }  // namespace SDL
 #endif

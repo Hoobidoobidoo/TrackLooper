@@ -8,7 +8,6 @@
 #include <fstream>
 #include <streambuf>
 #include <iostream>
-#include <cppitertools/enumerate.hpp>
 #include <unistd.h>
 
 #include "trktree.h"
@@ -20,6 +19,7 @@
 #include "SDL/EndcapGeometry.h" // SDL::EndcapGeometr
 #include "SDL/ModuleConnectionMap.h" // SDL::ModuleConnectionMap
 #include "SDL/Event.h"
+#include "SDL/LST.h"
 
 // Efficiency study modules
 #include "AnalysisConfig.h"

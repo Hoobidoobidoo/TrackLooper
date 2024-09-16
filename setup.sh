@@ -6,8 +6,15 @@
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 source $DIR/code/rooutil/thisrooutil.sh
 
-export SCRAM_ARCH=el8_amd64_gcc12
-export CMSSW_VERSION=CMSSW_14_1_0_pre0
+ARCH=$(uname -m)
+if [[ $(hostname) == *lnx4555* ]]; then
+  export SCRAM_ARCH=el9_amd64_gcc12
+elif [[ $ARCH == "aarch64" || $ARCH == "arm64" ]]; then
+  export SCRAM_ARCH=el9_aarch64_gcc12
+else
+  export SCRAM_ARCH=el8_amd64_gcc12
+fi
+export CMSSW_VERSION=CMSSW_14_1_0_pre3
 
 source /cvmfs/cms.cern.ch/cmsset_default.sh
 cd /cvmfs/cms.cern.ch/$SCRAM_ARCH/cms/cmssw/$CMSSW_VERSION/src
@@ -18,13 +25,14 @@ export BOOST_ROOT=$(scram tool info boost | grep BOOST_BASE | cut -d'=' -f2)
 export ALPAKA_ROOT=$(scram tool info alpaka | grep ALPAKA_BASE | cut -d'=' -f2)
 export CUDA_HOME=$(scram tool info cuda | grep CUDA_BASE | cut -d'=' -f2)
 export ROOT_ROOT=$(scram tool info root_interface | grep ROOT_INTERFACE_BASE | cut -d'=' -f2)
+export ROCM_ROOT=$(scram tool info rocm | grep ROCM_BASE | cut -d'=' -f2)
 
 cd - > /dev/null
 echo "Setup following ROOT. Make sure the appropriate setup file has been run. Otherwise the looper won't compile."
 which root
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-export LD_LIBRARY_PATH=$DIR/SDL/cuda:$DIR/SDL/cpu:$DIR:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=$DIR/SDL:$DIR:$LD_LIBRARY_PATH
 export PATH=$DIR/bin:$PATH
 export PATH=$DIR/efficiency/bin:$PATH
 export PATH=$DIR/efficiency/python:$PATH

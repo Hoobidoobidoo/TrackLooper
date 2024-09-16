@@ -1,19 +1,26 @@
 #ifndef Kernels_cuh
 #define Kernels_cuh
 
+#ifdef LST_IS_CMSSW_PACKAGE
+#include "RecoTracker/LSTCore/interface/alpaka/Constants.h"
+#include "RecoTracker/LSTCore/interface/alpaka/Module.h"
+#else
+#include "Constants.h"
 #include "Module.h"
+#endif
+
 #include "Hit.h"
 #include "MiniDoublet.h"
 #include "Segment.h"
 #include "Triplet.h"
 #include "Quintuplet.h"
 #include "PixelTriplet.h"
-#include "Constants.h"
 
 namespace SDL {
   ALPAKA_FN_ACC ALPAKA_FN_INLINE void rmQuintupletFromMemory(struct SDL::quintuplets& quintupletsInGPU,
-                                                             unsigned int quintupletIndex) {
-    quintupletsInGPU.isDup[quintupletIndex] = true;
+                                                             unsigned int quintupletIndex,
+                                                             bool secondpass = false) {
+    quintupletsInGPU.isDup[quintupletIndex] |= 1 + secondpass;
   };
 
   ALPAKA_FN_ACC ALPAKA_FN_INLINE void rmPixelTripletFromMemory(struct SDL::pixelTriplets& pixelTripletsInGPU,
@@ -198,12 +205,8 @@ namespace SDL {
                                   struct SDL::modules modulesInGPU,
                                   struct SDL::quintuplets quintupletsInGPU,
                                   struct SDL::objectRanges rangesInGPU) const {
-      using Dim = alpaka::Dim<TAcc>;
-      using Idx = alpaka::Idx<TAcc>;
-      using Vec = alpaka::Vec<Dim, Idx>;
-
-      Vec const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
-      Vec const gridThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
+      auto const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
+      auto const gridThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
 
       for (unsigned int lowmod = globalThreadIdx[0]; lowmod < *modulesInGPU.nLowerModules;
            lowmod += gridThreadExtent[0]) {
@@ -216,10 +219,8 @@ namespace SDL {
           float phi1 = __H2F(quintupletsInGPU.phi[ix]);
           float score_rphisum1 = __H2F(quintupletsInGPU.score_rphisum[ix]);
 
-          for (unsigned int jx1 = globalThreadIdx[2]; jx1 < nQuintuplets_lowmod; jx1 += gridThreadExtent[2]) {
+          for (unsigned int jx1 = globalThreadIdx[2] + ix1 + 1; jx1 < nQuintuplets_lowmod; jx1 += gridThreadExtent[2]) {
             unsigned int jx = quintupletModuleIndices_lowmod + jx1;
-            if (ix == jx)
-              continue;
 
             float eta2 = __H2F(quintupletsInGPU.eta[jx]);
             float phi2 = __H2F(quintupletsInGPU.phi[jx]);
@@ -235,15 +236,10 @@ namespace SDL {
 
             int nMatched = checkHitsT5(ix, jx, quintupletsInGPU);
             if (nMatched >= 7) {
-              if (score_rphisum1 > score_rphisum2) {
+              if (score_rphisum1 >= score_rphisum2) {
                 rmQuintupletFromMemory(quintupletsInGPU, ix);
-                continue;
-              } else if ((score_rphisum1 == score_rphisum2) && (ix < jx)) {
-                rmQuintupletFromMemory(quintupletsInGPU, ix);
-                continue;
               } else {
                 rmQuintupletFromMemory(quintupletsInGPU, jx);
-                continue;
               }
             }
           }
@@ -257,12 +253,8 @@ namespace SDL {
     ALPAKA_FN_ACC void operator()(TAcc const& acc,
                                   struct SDL::quintuplets quintupletsInGPU,
                                   struct SDL::objectRanges rangesInGPU) const {
-      using Dim = alpaka::Dim<TAcc>;
-      using Idx = alpaka::Idx<TAcc>;
-      using Vec = alpaka::Vec<Dim, Idx>;
-
-      Vec const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
-      Vec const gridThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
+      auto const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
+      auto const gridThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
 
       for (unsigned int lowmodIdx1 = globalThreadIdx[1]; lowmodIdx1 < *(rangesInGPU.nEligibleT5Modules);
            lowmodIdx1 += gridThreadExtent[1]) {
@@ -273,7 +265,7 @@ namespace SDL {
 
         unsigned int quintupletModuleIndices_lowmod1 = rangesInGPU.quintupletModuleIndices[lowmod1];
 
-        for (unsigned int lowmodIdx2 = globalThreadIdx[2]; lowmodIdx2 < *(rangesInGPU.nEligibleT5Modules);
+        for (unsigned int lowmodIdx2 = globalThreadIdx[2] + lowmodIdx1; lowmodIdx2 < *(rangesInGPU.nEligibleT5Modules);
              lowmodIdx2 += gridThreadExtent[2]) {
           uint16_t lowmod2 = rangesInGPU.indicesOfEligibleT5Modules[lowmodIdx2];
           unsigned int nQuintuplets_lowmod2 = quintupletsInGPU.nQuintuplets[lowmod2];
@@ -284,7 +276,7 @@ namespace SDL {
 
           for (unsigned int ix1 = 0; ix1 < nQuintuplets_lowmod1; ix1 += 1) {
             unsigned int ix = quintupletModuleIndices_lowmod1 + ix1;
-            if (quintupletsInGPU.partOfPT5[ix] || quintupletsInGPU.isDup[ix])
+            if (quintupletsInGPU.partOfPT5[ix] || (quintupletsInGPU.isDup[ix] & 1))
               continue;
 
             for (unsigned int jx1 = 0; jx1 < nQuintuplets_lowmod2; jx1++) {
@@ -292,7 +284,7 @@ namespace SDL {
               if (ix == jx)
                 continue;
 
-              if (quintupletsInGPU.partOfPT5[jx] || quintupletsInGPU.isDup[jx])
+              if (quintupletsInGPU.partOfPT5[jx] || (quintupletsInGPU.isDup[jx] & 1))
                 continue;
 
               float eta1 = __H2F(quintupletsInGPU.eta[ix]);
@@ -316,12 +308,11 @@ namespace SDL {
               int nMatched = checkHitsT5(ix, jx, quintupletsInGPU);
               if (dR2 < 0.001f || nMatched >= 5) {
                 if (score_rphisum1 > score_rphisum2) {
-                  rmQuintupletFromMemory(quintupletsInGPU, ix);
-                  continue;
-                }
-                if ((score_rphisum1 == score_rphisum2) && (ix < jx)) {
-                  rmQuintupletFromMemory(quintupletsInGPU, ix);
-                  continue;
+                  rmQuintupletFromMemory(quintupletsInGPU, ix, true);
+                } else if (score_rphisum1 < score_rphisum2) {
+                  rmQuintupletFromMemory(quintupletsInGPU, jx, true);
+                } else {
+                  rmQuintupletFromMemory(quintupletsInGPU, (ix < jx ? ix : jx), true);
                 }
               }
             }
@@ -333,15 +324,9 @@ namespace SDL {
 
   struct removeDupPixelTripletsInGPUFromMap {
     template <typename TAcc>
-    ALPAKA_FN_ACC void operator()(TAcc const& acc,
-                                  struct SDL::pixelTriplets pixelTripletsInGPU,
-                                  bool secondPass) const {
-      using Dim = alpaka::Dim<TAcc>;
-      using Idx = alpaka::Idx<TAcc>;
-      using Vec = alpaka::Vec<Dim, Idx>;
-
-      Vec const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
-      Vec const gridThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
+    ALPAKA_FN_ACC void operator()(TAcc const& acc, struct SDL::pixelTriplets pixelTripletsInGPU) const {
+      auto const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
+      auto const gridThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
 
       for (unsigned int ix = globalThreadIdx[1]; ix < *pixelTripletsInGPU.nPixelTriplets; ix += gridThreadExtent[1]) {
         for (unsigned int jx = globalThreadIdx[2]; jx < *pixelTripletsInGPU.nPixelTriplets; jx += gridThreadExtent[2]) {
@@ -372,27 +357,15 @@ namespace SDL {
 
   struct removeDupPixelQuintupletsInGPUFromMap {
     template <typename TAcc>
-    ALPAKA_FN_ACC void operator()(TAcc const& acc,
-                                  struct SDL::pixelQuintuplets pixelQuintupletsInGPU,
-                                  bool secondPass) const {
-      using Dim = alpaka::Dim<TAcc>;
-      using Idx = alpaka::Idx<TAcc>;
-      using Vec = alpaka::Vec<Dim, Idx>;
-
-      Vec const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
-      Vec const gridThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
+    ALPAKA_FN_ACC void operator()(TAcc const& acc, struct SDL::pixelQuintuplets pixelQuintupletsInGPU) const {
+      auto const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
+      auto const gridThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
 
       unsigned int nPixelQuintuplets = *pixelQuintupletsInGPU.nPixelQuintuplets;
       for (unsigned int ix = globalThreadIdx[1]; ix < nPixelQuintuplets; ix += gridThreadExtent[1]) {
-        if (secondPass && pixelQuintupletsInGPU.isDup[ix])
-          continue;
-
         float score1 = __H2F(pixelQuintupletsInGPU.score[ix]);
         for (unsigned int jx = globalThreadIdx[2]; jx < nPixelQuintuplets; jx += gridThreadExtent[2]) {
           if (ix == jx)
-            continue;
-
-          if (secondPass && pixelQuintupletsInGPU.isDup[jx])
             continue;
 
           int nMatched = checkHitspT5(ix, jx, pixelQuintupletsInGPU);
@@ -414,12 +387,8 @@ namespace SDL {
                                   struct SDL::modules modulesInGPU,
                                   struct SDL::segments segmentsInGPU,
                                   bool secondpass) const {
-      using Dim = alpaka::Dim<TAcc>;
-      using Idx = alpaka::Idx<TAcc>;
-      using Vec = alpaka::Vec<Dim, Idx>;
-
-      Vec const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
-      Vec const gridThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
+      auto const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
+      auto const gridThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
 
       int pixelModuleIndex = *modulesInGPU.nLowerModules;
       unsigned int nPixelSegments = segmentsInGPU.nSegments[pixelModuleIndex];
@@ -449,7 +418,7 @@ namespace SDL {
           if (secondpass && (!segmentsInGPU.isQuad[jx] || (segmentsInGPU.isDup[jx] & 1)))
             continue;
 
-          char quad_diff = segmentsInGPU.isQuad[ix] - segmentsInGPU.isQuad[jx];
+          int8_t quad_diff = segmentsInGPU.isQuad[ix] - segmentsInGPU.isQuad[jx];
           float score_diff = segmentsInGPU.score[ix] - segmentsInGPU.score[jx];
           // Always keep quads over trips. If they are the same, we want the object with better score
           int idxToRemove;

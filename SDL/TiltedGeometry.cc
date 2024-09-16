@@ -1,46 +1,48 @@
 #include "TiltedGeometry.h"
 
-SDL::TiltedGeometry SDL::tiltedGeometry;
+SDL::TiltedGeometry<SDL::Dev>::TiltedGeometry(std::string filename) { load(filename); }
 
-SDL::TiltedGeometry::TiltedGeometry() {}
-
-SDL::TiltedGeometry::TiltedGeometry(std::string filename) { load(filename); }
-
-SDL::TiltedGeometry::~TiltedGeometry() {}
-
-void SDL::TiltedGeometry::load(std::string filename) {
+void SDL::TiltedGeometry<SDL::Dev>::load(std::string filename) {
   drdzs_.clear();
-  slopes_.clear();
+  dxdys_.clear();
 
-  std::ifstream ifile;
-  ifile.open(filename.c_str());
-  std::string line;
+  std::ifstream ifile(filename, std::ios::binary);
+  if (!ifile.is_open()) {
+    throw std::runtime_error("Unable to open file: " + filename);
+  }
 
-  while (std::getline(ifile, line)) {
+  while (!ifile.eof()) {
     unsigned int detid;
-    float drdz;
-    float slope;
+    float drdz, dxdy;
 
-    std::stringstream ss(line);
+    // Read the detid, drdz, and dxdy from binary file
+    ifile.read(reinterpret_cast<char*>(&detid), sizeof(detid));
+    ifile.read(reinterpret_cast<char*>(&drdz), sizeof(drdz));
+    ifile.read(reinterpret_cast<char*>(&dxdy), sizeof(dxdy));
 
-    ss >> detid >> drdz >> slope;
-
-    drdzs_[detid] = drdz;
-    slopes_[detid] = slope;
+    if (ifile) {
+      drdzs_[detid] = drdz;
+      dxdys_[detid] = dxdy;
+    } else {
+      // End of file or read failed
+      if (!ifile.eof()) {
+        throw std::runtime_error("Failed to read Tilted Geometry binary data.");
+      }
+    }
   }
 }
 
-float SDL::TiltedGeometry::getDrDz(unsigned int detid) {
+float SDL::TiltedGeometry<SDL::Dev>::getDrDz(unsigned int detid) const {
   if (drdzs_.find(detid) != drdzs_.end()) {
-    return drdzs_[detid];
+    return drdzs_.at(detid);
   } else {
     return 0;
   }
 }
 
-float SDL::TiltedGeometry::getSlope(unsigned int detid) {
-  if (slopes_.find(detid) != slopes_.end()) {
-    return slopes_[detid];
+float SDL::TiltedGeometry<SDL::Dev>::getDxDy(unsigned int detid) const {
+  if (dxdys_.find(detid) != dxdys_.end()) {
+    return dxdys_.at(detid);
   } else {
     return 0;
   }

@@ -1,8 +1,13 @@
 #ifndef Hit_cuh
 #define Hit_cuh
 
+#ifdef LST_IS_CMSSW_PACKAGE
+#include "RecoTracker/LSTCore/interface/alpaka/Constants.h"
+#include "RecoTracker/LSTCore/interface/alpaka/Module.h"
+#else
 #include "Constants.h"
 #include "Module.h"
+#endif
 
 namespace SDL {
   struct hits {
@@ -93,11 +98,11 @@ namespace SDL {
           hitRangesUpper_buf(allocBufWrapper<int>(devAccIn, nModules, queue)),
           hitRangesnLower_buf(allocBufWrapper<int8_t>(devAccIn, nModules, queue)),
           hitRangesnUpper_buf(allocBufWrapper<int8_t>(devAccIn, nModules, queue)) {
-      alpaka::memset(queue, hitRanges_buf, -1);
-      alpaka::memset(queue, hitRangesLower_buf, -1);
-      alpaka::memset(queue, hitRangesUpper_buf, -1);
-      alpaka::memset(queue, hitRangesnLower_buf, -1);
-      alpaka::memset(queue, hitRangesnUpper_buf, -1);
+      alpaka::memset(queue, hitRanges_buf, 0xff);
+      alpaka::memset(queue, hitRangesLower_buf, 0xff);
+      alpaka::memset(queue, hitRangesUpper_buf, 0xff);
+      alpaka::memset(queue, hitRangesnLower_buf, 0xff);
+      alpaka::memset(queue, hitRangesnUpper_buf, 0xff);
       alpaka::wait(queue);
     }
   };
@@ -192,12 +197,8 @@ namespace SDL {
                                   struct SDL::modules modulesInGPU,
                                   struct SDL::hits hitsInGPU,
                                   int const& nLowerModules) const {
-      using Dim = alpaka::Dim<TAcc>;
-      using Idx = alpaka::Idx<TAcc>;
-      using Vec = alpaka::Vec<Dim, Idx>;
-
-      Vec const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
-      Vec const gridThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
+      auto const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
+      auto const gridThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
 
       for (int lowerIndex = globalThreadIdx[2]; lowerIndex < nLowerModules; lowerIndex += gridThreadExtent[2]) {
         uint16_t upperIndex = modulesInGPU.partnerModuleIndices[lowerIndex];
@@ -216,22 +217,18 @@ namespace SDL {
   struct hitLoopKernel {
     template <typename TAcc>
     ALPAKA_FN_ACC void operator()(TAcc const& acc,
-                                  uint16_t Endcap,            // Integer corresponding to endcap in module subdets
-                                  uint16_t TwoS,              // Integer corresponding to TwoS in moduleType
-                                  unsigned int nModules,      // Number of modules
-                                  unsigned int nEndCapMap,    // Number of elements in endcap map
-                                  unsigned int* geoMapDetId,  // DetId's from endcap map
-                                  float* geoMapPhi,           // Phi values from endcap map
+                                  uint16_t Endcap,                  // Integer corresponding to endcap in module subdets
+                                  uint16_t TwoS,                    // Integer corresponding to TwoS in moduleType
+                                  unsigned int nModules,            // Number of modules
+                                  unsigned int nEndCapMap,          // Number of elements in endcap map
+                                  const unsigned int* geoMapDetId,  // DetId's from endcap map
+                                  const float* geoMapPhi,           // Phi values from endcap map
                                   struct SDL::modules modulesInGPU,
                                   struct SDL::hits hitsInGPU,
                                   unsigned int const& nHits) const  // Total number of hits in event
     {
-      using Dim = alpaka::Dim<TAcc>;
-      using Idx = alpaka::Idx<TAcc>;
-      using Vec = alpaka::Vec<Dim, Idx>;
-
-      Vec const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
-      Vec const gridThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
+      auto const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
+      auto const gridThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
       for (unsigned int ihit = globalThreadIdx[2]; ihit < nHits; ihit += gridThreadExtent[2]) {
         float ihit_x = hitsInGPU.xs[ihit];
         float ihit_y = hitsInGPU.ys[ihit];
@@ -252,10 +249,7 @@ namespace SDL {
 
         if (modulesInGPU.subdets[lastModuleIndex] == Endcap && modulesInGPU.moduleType[lastModuleIndex] == TwoS) {
           found_index = binary_search(geoMapDetId, iDetId, nEndCapMap);
-          float phi = 0;
-          // Unclear why these are not in map, but CPU map returns phi = 0 for all exceptions.
-          if (found_index != -1)
-            phi = geoMapPhi[found_index];
+          float phi = geoMapPhi[found_index];
           float cos_phi = alpaka::math::cos(acc, phi);
           hitsInGPU.highEdgeXs[ihit] = ihit_x + 2.5f * cos_phi;
           hitsInGPU.lowEdgeXs[ihit] = ihit_x - 2.5f * cos_phi;

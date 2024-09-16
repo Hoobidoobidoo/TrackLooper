@@ -2,10 +2,16 @@
 #define Segment_cuh
 #define OUTPUT_LS_CUTS
 
+#ifdef LST_IS_CMSSW_PACKAGE
+#include "RecoTracker/LSTCore/interface/alpaka/Constants.h"
+#include "RecoTracker/LSTCore/interface/alpaka/Module.h"
+#else
 #include "Constants.h"
+#include "Module.h"
+#endif
+
 #include "EndcapGeometry.h"
 #include "MiniDoublet.h"
-#include "Module.h"
 #include "Hit.h"
 
 namespace SDL {
@@ -887,14 +893,10 @@ namespace SDL {
                                   struct SDL::miniDoublets mdsInGPU,
                                   struct SDL::segments segmentsInGPU,
                                   struct SDL::objectRanges rangesInGPU) const {
-      using Dim = alpaka::Dim<TAcc>;
-      using Idx = alpaka::Idx<TAcc>;
-      using Vec = alpaka::Vec<Dim, Idx>;
-
-      Vec const globalBlockIdx = alpaka::getIdx<alpaka::Grid, alpaka::Blocks>(acc);
-      Vec const blockThreadIdx = alpaka::getIdx<alpaka::Block, alpaka::Threads>(acc);
-      Vec const gridBlockExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Blocks>(acc);
-      Vec const blockThreadExtent = alpaka::getWorkDiv<alpaka::Block, alpaka::Threads>(acc);
+      auto const globalBlockIdx = alpaka::getIdx<alpaka::Grid, alpaka::Blocks>(acc);
+      auto const blockThreadIdx = alpaka::getIdx<alpaka::Block, alpaka::Threads>(acc);
+      auto const gridBlockExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Blocks>(acc);
+      auto const blockThreadExtent = alpaka::getWorkDiv<alpaka::Block, alpaka::Threads>(acc);
 
       for (uint16_t innerLowerModuleIndex = globalBlockIdx[2]; innerLowerModuleIndex < (*modulesInGPU.nLowerModules);
            innerLowerModuleIndex += gridBlockExtent[2]) {
@@ -1029,12 +1031,8 @@ namespace SDL {
                                   struct SDL::modules modulesInGPU,
                                   struct SDL::objectRanges rangesInGPU,
                                   struct SDL::miniDoublets mdsInGPU) const {
-      using Dim = alpaka::Dim<TAcc>;
-      using Idx = alpaka::Idx<TAcc>;
-      using Vec = alpaka::Vec<Dim, Idx>;
-
-      Vec const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
-      Vec const gridThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
+      auto const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
+      auto const gridThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
 
       // Initialize variables in shared memory and set to 0
       int& nTotalSegments = alpaka::declareSharedVar<int, __COUNTER__>(acc);
@@ -1130,12 +1128,8 @@ namespace SDL {
                                   struct SDL::modules modulesInGPU,
                                   struct SDL::segments segmentsInGPU,
                                   struct SDL::objectRanges rangesInGPU) const {
-      using Dim = alpaka::Dim<TAcc>;
-      using Idx = alpaka::Idx<TAcc>;
-      using Vec = alpaka::Vec<Dim, Idx>;
-
-      Vec const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
-      Vec const gridThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
+      auto const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
+      auto const gridThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
 
       for (uint16_t i = globalThreadIdx[2]; i < *modulesInGPU.nLowerModules; i += gridThreadExtent[2]) {
         if (segmentsInGPU.nSegments[i] == 0) {
@@ -1164,12 +1158,8 @@ namespace SDL {
                                   float* dPhiChange,
                                   uint16_t pixelModuleIndex,
                                   const int size) const {
-      using Dim = alpaka::Dim<TAcc>;
-      using Idx = alpaka::Idx<TAcc>;
-      using Vec = alpaka::Vec<Dim, Idx>;
-
-      Vec const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
-      Vec const gridThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
+      auto const globalThreadIdx = alpaka::getIdx<alpaka::Grid, alpaka::Threads>(acc);
+      auto const gridThreadExtent = alpaka::getWorkDiv<alpaka::Grid, alpaka::Threads>(acc);
 
       for (int tid = globalThreadIdx[2]; tid < size; tid += gridThreadExtent[2]) {
         unsigned int innerMDIndex = rangesInGPU.miniDoubletModuleIndices[pixelModuleIndex] + 2 * (tid);
