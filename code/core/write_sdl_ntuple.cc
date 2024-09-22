@@ -900,7 +900,7 @@ std::tuple<int, float, float, float, int, vector<int>> parseTrackCandidate(SDL::
 }
 
 //________________________________________________________________________________________________________________________________
-std::tuple<int, float, float, float, int, vector<int>, vector<float>> parseTrackCandidateAllMatch(SDL::Event* event, unsigned int idx)
+std::tuple<int, float, float, float, int, vector<int>, vector<float>> parseTrackCandidateAllMatch(SDL::Event<SDL::Acc>* event, unsigned int idx)
 {
     // Get the type of the track candidate
     SDL::trackCandidatesBuffer<alpaka::DevCpu>& trackCandidatesInGPU = (*event->getTrackCandidates());
