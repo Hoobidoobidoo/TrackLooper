@@ -54,6 +54,6 @@ void debugPrintOutlierMultiplicities(SDL::Event<SDL::Acc>* event);
 
 // LSTOD
 void createOutputBranches_v2();
-void fillOutputBranches_v2(SDL::Event* event);
+void fillOutputBranches_v2(SDL::Event<SDL::Acc>* event);
 
 #endif

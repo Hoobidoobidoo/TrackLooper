@@ -1588,7 +1588,7 @@ void createOutputBranches_v2()
 }
 
 //________________________________________________________________________________________________________________________________
-void fillOutputBranches_v2(SDL::Event* event)
+void fillOutputBranches_v2(SDL::Event<SDL::Acc>* event)
 {
 
     // This function will go through each object and fill in the branches defined in createOutputBranches_v2 function.
