@@ -960,23 +960,9 @@ std::tuple<float, float, float, vector<unsigned int>, vector<unsigned int>> pars
     // ****           oo -- oo -- oo -- oo -- oo   pT5
     //                oo -- oo -- oo               first T3 of the T5
     //                            oo -- oo -- oo   second T3 of the T5
-
-
-    unsigned int T5Index = getT5FrompT5(event, pT5);
     unsigned int pT5 = trackCandidatesInGPU.directObjectIndices[idx];
-    std::vector<unsigned int> Hits = getOuterTrackerHitsFrompT5(event, pT5);
-    unsigned int Hit_0 = Hits[0];
-    unsigned int Hit_4 = Hits[4];
-    unsigned int Hit_8 = Hits[8];
-
-    std::vector<unsigned int> T3s = getT3sFrompT5(event, pT5);
-    unsigned int T3_0 = T3s[0];
-    unsigned int T3_1 = T3s[1];
-
     unsigned int pLS = getPixelLSFrompT5(event, pT5);
-
-    const float kRinv1GeVf = (2.99792458e-3 * 3.8);
-    const float k2Rinv1GeVf = kRinv1GeVf / 2.;
+    unsigned int T5Index = getT5FrompT5(event, pT5);
 
     //=================================================================================
     // Some history and geometry lesson...
@@ -1054,25 +1040,13 @@ std::tuple<float, float, float, vector<unsigned int>, vector<unsigned int>> pars
     //
     // Anyhow, as of now, we compute 2 beta's for T3s, and T5 has two T3s.
     // And from there we estimate the pt's and we compute pt_T5.
-    // Compute the radial distance between first mini-doublet to third minidoublet
-    const float dr_in = sqrt(pow(hitsInGPU.xs[Hit_4] - hitsInGPU.xs[Hit_0], 2) + pow(hitsInGPU.ys[Hit_4] - hitsInGPU.ys[Hit_0], 2));
-    // Compute the radial distance between third mini-doublet to fifth minidoublet
-    const float dr_out = sqrt(pow(hitsInGPU.xs[Hit_8] - hitsInGPU.xs[Hit_4], 2) + pow(hitsInGPU.ys[Hit_8] - hitsInGPU.ys[Hit_4], 2));
-    float betaIn_in   = __H2F(tripletsInGPU.betaIn[T3_0]);
-    float betaOut_in  = __H2F(tripletsInGPU.betaOut[T3_0]);
-    float betaIn_out  = __H2F(tripletsInGPU.betaIn[T3_1]);
-    float betaOut_out = __H2F(tripletsInGPU.betaOut[T3_1]);
-    const float ptAv_in = abs(dr_in * k2Rinv1GeVf / sin((betaIn_in + betaOut_in) / 2.));
-    const float ptAv_out = abs(dr_out * k2Rinv1GeVf / sin((betaIn_out + betaOut_out) / 2.));
-    const float pt_T5 = (ptAv_in + ptAv_out) / 2.;
 
     // pixel pt
     const float pt_pLS = segmentsInGPU.ptIn[pLS];
     const float eta_pLS = segmentsInGPU.eta[pLS];
     const float phi_pLS = segmentsInGPU.phi[pLS];
-
-    // average pt
-    const float pt = (pt_pLS + pt_T5) / 2.;
+    float pt_T5 = __H2F(quintupletsInGPU.innerRadius[T5Index]) * 2 * SDL::k2Rinv1GeVf;
+    const float pt = (pt_T5 + pt_pLS) / 2;
 
     // Form the hit idx/type vector
     std::vector<unsigned int> hit_idx = getHitIdxsFrompT5(event, pT5);
@@ -1085,7 +1059,7 @@ std::tuple<float, float, float, vector<unsigned int>, vector<unsigned int>> pars
 //________________________________________________________________________________________________________________________________
 std::tuple<float, float, float, vector<unsigned int>, vector<unsigned int>> parsepT3(SDL::Event<SDL::Acc>* event, unsigned int idx)
 {
-    // Get relevant information
+   // Get relevant information
     SDL::trackCandidatesBuffer<alpaka::DevCpu>& trackCandidatesInGPU = (*event->getTrackCandidates());
     SDL::tripletsBuffer<alpaka::DevCpu>& tripletsInGPU = (*event->getTriplets());
     SDL::segmentsBuffer<alpaka::DevCpu>& segmentsInGPU = (*event->getSegments());
@@ -1098,29 +1072,17 @@ std::tuple<float, float, float, vector<unsigned int>, vector<unsigned int>> pars
     // pLS            01    23    45               (anchor hit of a minidoublet is always the first of the pair)
     // ****           oo -- oo -- oo               pT3
     unsigned int pT3 = trackCandidatesInGPU.directObjectIndices[idx];
-    std::vector<unsigned int> Hits = getOuterTrackerHitsFrompT3(event, pT3);
-    unsigned int Hit_0 = Hits[0];
-    unsigned int Hit_4 = Hits[4];
-
+    unsigned int pLS = getPixelLSFrompT3(event, pT3);
     unsigned int T3 = getT3FrompT3(event, pT3);
 
-    unsigned int pLS = getPixelLSFrompT3(event, pT3);
-
-    const float kRinv1GeVf = (2.99792458e-3 * 3.8);
-    const float k2Rinv1GeVf = kRinv1GeVf / 2.;
-    const float dr = sqrt(pow(hitsInGPU.xs[Hit_4] - hitsInGPU.xs[Hit_0], 2) + pow(hitsInGPU.ys[Hit_4] - hitsInGPU.ys[Hit_0], 2));
-    float betaIn   = __H2F(tripletsInGPU.betaIn[T3]);
-    float betaOut  = __H2F(tripletsInGPU.betaOut[T3]);
-    const float pt_T3 = abs(dr * k2Rinv1GeVf / sin((betaIn + betaOut) / 2.));
-
     // pixel pt
-    const int seedIdx = segmentsInGPU.seedIdx[pLS];
-    const float pt_pLS = trk.see_pt()[seedIdx];
-    const float eta_pLS = trk.see_eta()[seedIdx];
-    const float phi_pLS = trk.see_phi()[seedIdx];
+    const float pt_pLS = segmentsInGPU.ptIn[pLS];
+    const float eta_pLS = segmentsInGPU.eta[pLS];
+    const float phi_pLS = segmentsInGPU.phi[pLS];
+    float pt_T3 = tripletsInGPU.circleRadius[T3] * 2 * SDL::k2Rinv1GeVf;
 
     // average pt
-    const float pt = (pt_pLS + pt_T3) / 2.;
+    const float pt = (pt_pLS+pt_T3)/2;
 
     // Form the hit idx/type vector
     std::vector<unsigned int> hit_idx = getHitIdxsFrompT3(event, pT3);
@@ -2074,8 +2036,8 @@ void fillOutputBranches_v2(SDL::Event<SDL::Acc>* event)
             SDLMath::Hit hitA(0, 0, 0);
             SDLMath::Hit hitB(hitsInGPU.xs[hit_idx[0]], hitsInGPU.ys[hit_idx[0]], hitsInGPU.zs[hit_idx[0]]);
             SDLMath::Hit hitC(hitsInGPU.xs[hit_idx[2]], hitsInGPU.ys[hit_idx[2]], hitsInGPU.zs[hit_idx[2]]);
-            SDLMath::Hit center = SDLMath::MathUtil::getCenterFromThreePoints(hitA, hitB, hitC);
-            float pt = SDLMath::MathUtil::ptEstimateFromRadius(center.rt());
+            SDLMath::Hit center = SDLMath::Hit::getCenterFromThreePoints(hitA, hitB, hitC);
+            float pt = SDLMath::Hit::ptEstimateFromRadius(center.rt());
             float eta = hitC.eta();
             float phi = hitB.phi();
             
@@ -2232,8 +2194,8 @@ void fillOutputBranches_v2(SDL::Event<SDL::Acc>* event)
             SDLMath::Hit hitA(hitsInGPU.xs[hit_idx[0]], hitsInGPU.ys[hit_idx[0]], hitsInGPU.zs[hit_idx[0]]);
             SDLMath::Hit hitB(hitsInGPU.xs[hit_idx[2]], hitsInGPU.ys[hit_idx[2]], hitsInGPU.zs[hit_idx[2]]);
             SDLMath::Hit hitC(hitsInGPU.xs[hit_idx[4]], hitsInGPU.ys[hit_idx[4]], hitsInGPU.zs[hit_idx[4]]);
-            SDLMath::Hit center = SDLMath::MathUtil::getCenterFromThreePoints(hitA, hitB, hitC);
-            float pt = SDLMath::MathUtil::ptEstimateFromRadius(center.rt());
+            SDLMath::Hit center = SDLMath::Hit::getCenterFromThreePoints(hitA, hitB, hitC);
+            float pt = SDLMath::Hit::ptEstimateFromRadius(center.rt());
             float eta = hitC.eta();
             float phi = hitA.phi();
             ana.tx->pushbackToBranch<float>("t3_pt", pt);
@@ -2360,14 +2322,14 @@ void fillOutputBranches_v2(SDL::Event<SDL::Acc>* event)
             SDLMath::Hit hitC(hitsInGPU.xs[hit_idx[4]], hitsInGPU.ys[hit_idx[4]], hitsInGPU.zs[hit_idx[4]]);
             SDLMath::Hit hitD(hitsInGPU.xs[hit_idx[6]], hitsInGPU.ys[hit_idx[6]], hitsInGPU.zs[hit_idx[6]]);
             SDLMath::Hit hitE(hitsInGPU.xs[hit_idx[8]], hitsInGPU.ys[hit_idx[8]], hitsInGPU.zs[hit_idx[8]]);
-            SDLMath::Hit center = SDLMath::MathUtil::getCenterFromThreePoints(hitA, hitB, hitC);
-            float pt = SDLMath::MathUtil::ptEstimateFromRadius(center.rt());
-            SDLMath::Hit center2 = SDLMath::MathUtil::getCenterFromThreePoints(hitB, hitC, hitD);
-            float pt2 = SDLMath::MathUtil::ptEstimateFromRadius(center2.rt());
-            SDLMath::Hit center3 = SDLMath::MathUtil::getCenterFromThreePoints(hitC, hitD, hitE);
-            float pt3 = SDLMath::MathUtil::ptEstimateFromRadius(center3.rt());
-            SDLMath::Hit center4 = SDLMath::MathUtil::getCenterFromThreePoints(hitA, hitC, hitE);
-            float pt4 = SDLMath::MathUtil::ptEstimateFromRadius(center4.rt());
+            SDLMath::Hit center = SDLMath::Hit::getCenterFromThreePoints(hitA, hitB, hitC);
+            float pt = SDLMath::Hit::ptEstimateFromRadius(center.rt());
+            SDLMath::Hit center2 = SDLMath::Hit::getCenterFromThreePoints(hitB, hitC, hitD);
+            float pt2 = SDLMath::Hit::ptEstimateFromRadius(center2.rt());
+            SDLMath::Hit center3 = SDLMath::Hit::getCenterFromThreePoints(hitC, hitD, hitE);
+            float pt3 = SDLMath::Hit::ptEstimateFromRadius(center3.rt());
+            SDLMath::Hit center4 = SDLMath::Hit::getCenterFromThreePoints(hitA, hitC, hitE);
+            float pt4 = SDLMath::Hit::ptEstimateFromRadius(center4.rt());
             float ptavg = (pt + pt2 + pt3 + pt4) / 4;
             float eta = hitE.eta();
             float phi = hitA.phi();
