@@ -2036,8 +2036,8 @@ void fillOutputBranches_v2(SDL::Event<SDL::Acc>* event)
             SDLMath::Hit hitA(0, 0, 0);
             SDLMath::Hit hitB(hitsInGPU.xs[hit_idx[0]], hitsInGPU.ys[hit_idx[0]], hitsInGPU.zs[hit_idx[0]]);
             SDLMath::Hit hitC(hitsInGPU.xs[hit_idx[2]], hitsInGPU.ys[hit_idx[2]], hitsInGPU.zs[hit_idx[2]]);
-            SDLMath::Hit center = SDLMath::Hit::getCenterFromThreePoints(hitA, hitB, hitC);
-            float pt = SDLMath::Hit::ptEstimateFromRadius(center.rt());
+            SDLMath::Hit center = SDLMath::getCenterFromThreePoints(hitA, hitB, hitC);
+            float pt = SDLMath::ptEstimateFromRadius(center.rt());
             float eta = hitC.eta();
             float phi = hitB.phi();
             
@@ -2194,8 +2194,8 @@ void fillOutputBranches_v2(SDL::Event<SDL::Acc>* event)
             SDLMath::Hit hitA(hitsInGPU.xs[hit_idx[0]], hitsInGPU.ys[hit_idx[0]], hitsInGPU.zs[hit_idx[0]]);
             SDLMath::Hit hitB(hitsInGPU.xs[hit_idx[2]], hitsInGPU.ys[hit_idx[2]], hitsInGPU.zs[hit_idx[2]]);
             SDLMath::Hit hitC(hitsInGPU.xs[hit_idx[4]], hitsInGPU.ys[hit_idx[4]], hitsInGPU.zs[hit_idx[4]]);
-            SDLMath::Hit center = SDLMath::Hit::getCenterFromThreePoints(hitA, hitB, hitC);
-            float pt = SDLMath::Hit::ptEstimateFromRadius(center.rt());
+            SDLMath::Hit center = SDLMath::getCenterFromThreePoints(hitA, hitB, hitC);
+            float pt = SDLMath::ptEstimateFromRadius(center.rt());
             float eta = hitC.eta();
             float phi = hitA.phi();
             ana.tx->pushbackToBranch<float>("t3_pt", pt);
@@ -2322,14 +2322,14 @@ void fillOutputBranches_v2(SDL::Event<SDL::Acc>* event)
             SDLMath::Hit hitC(hitsInGPU.xs[hit_idx[4]], hitsInGPU.ys[hit_idx[4]], hitsInGPU.zs[hit_idx[4]]);
             SDLMath::Hit hitD(hitsInGPU.xs[hit_idx[6]], hitsInGPU.ys[hit_idx[6]], hitsInGPU.zs[hit_idx[6]]);
             SDLMath::Hit hitE(hitsInGPU.xs[hit_idx[8]], hitsInGPU.ys[hit_idx[8]], hitsInGPU.zs[hit_idx[8]]);
-            SDLMath::Hit center = SDLMath::Hit::getCenterFromThreePoints(hitA, hitB, hitC);
-            float pt = SDLMath::Hit::ptEstimateFromRadius(center.rt());
-            SDLMath::Hit center2 = SDLMath::Hit::getCenterFromThreePoints(hitB, hitC, hitD);
-            float pt2 = SDLMath::Hit::ptEstimateFromRadius(center2.rt());
-            SDLMath::Hit center3 = SDLMath::Hit::getCenterFromThreePoints(hitC, hitD, hitE);
-            float pt3 = SDLMath::Hit::ptEstimateFromRadius(center3.rt());
-            SDLMath::Hit center4 = SDLMath::Hit::getCenterFromThreePoints(hitA, hitC, hitE);
-            float pt4 = SDLMath::Hit::ptEstimateFromRadius(center4.rt());
+            SDLMath::Hit center = SDLMath::getCenterFromThreePoints(hitA, hitB, hitC);
+            float pt = SDLMath::ptEstimateFromRadius(center.rt());
+            SDLMath::Hit center2 = SDLMath::getCenterFromThreePoints(hitB, hitC, hitD);
+            float pt2 = SDLMath::ptEstimateFromRadius(center2.rt());
+            SDLMath::Hit center3 = SDLMath::getCenterFromThreePoints(hitC, hitD, hitE);
+            float pt3 = SDLMath::ptEstimateFromRadius(center3.rt());
+            SDLMath::Hit center4 = SDLMath::getCenterFromThreePoints(hitA, hitC, hitE);
+            float pt4 = SDLMath::ptEstimateFromRadius(center4.rt());
             float ptavg = (pt + pt2 + pt3 + pt4) / 4;
             float eta = hitE.eta();
             float phi = hitA.phi();
