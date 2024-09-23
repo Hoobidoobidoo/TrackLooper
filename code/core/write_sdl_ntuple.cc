@@ -960,8 +960,8 @@ std::tuple<float, float, float, vector<unsigned int>, vector<unsigned int>> pars
     // ****           oo -- oo -- oo -- oo -- oo   pT5
     //                oo -- oo -- oo               first T3 of the T5
     //                            oo -- oo -- oo   second T3 of the T5
-    unsigned int pT5 = trackCandidatesInGPU.directObjectIndices[idx];
-    unsigned int pLS = getPixelLSFrompT5(event, pT5);
+
+
     unsigned int T5Index = getT5FrompT5(event, pT5);
     unsigned int pT5 = trackCandidatesInGPU.directObjectIndices[idx];
     std::vector<unsigned int> Hits = getOuterTrackerHitsFrompT5(event, pT5);
@@ -1909,7 +1909,7 @@ void fillOutputBranches_v2(SDL::Event<SDL::Acc>* event)
             float other_z = hitsInGPU.zs[UpperHitIndex];
 
             // Construct the anchor hit 3 vector
-            SDL::CPU::Hit anchor_hit(anchor_x, anchor_y, anchor_z, LowerHitIndex);
+            SDLMath::Hit anchor_hit(anchor_x, anchor_y, anchor_z, LowerHitIndex);
 
             // Pt is computed via dphichange and the eta and phi are computed based on anchor hit
             float dphichange = miniDoubletsInGPU.dphichanges[mdIdx];
@@ -2071,11 +2071,11 @@ void fillOutputBranches_v2(SDL::Event<SDL::Acc>* event)
             std::vector<unsigned int> mdIdxs = getMDsFromLS(event, lsIdx);
 
             // Computing line segment pt estimate (assuming beam spot is at zero)
-            SDL::CPU::Hit hitA(0, 0, 0);
-            SDL::CPU::Hit hitB(hitsInGPU.xs[hit_idx[0]], hitsInGPU.ys[hit_idx[0]], hitsInGPU.zs[hit_idx[0]]);
-            SDL::CPU::Hit hitC(hitsInGPU.xs[hit_idx[2]], hitsInGPU.ys[hit_idx[2]], hitsInGPU.zs[hit_idx[2]]);
-            SDL::CPU::Hit center = SDL::CPU::MathUtil::getCenterFromThreePoints(hitA, hitB, hitC);
-            float pt = SDL::CPU::MathUtil::ptEstimateFromRadius(center.rt());
+            SDLMath::Hit hitA(0, 0, 0);
+            SDLMath::Hit hitB(hitsInGPU.xs[hit_idx[0]], hitsInGPU.ys[hit_idx[0]], hitsInGPU.zs[hit_idx[0]]);
+            SDLMath::Hit hitC(hitsInGPU.xs[hit_idx[2]], hitsInGPU.ys[hit_idx[2]], hitsInGPU.zs[hit_idx[2]]);
+            SDLMath::Hit center = SDLMath::MathUtil::getCenterFromThreePoints(hitA, hitB, hitC);
+            float pt = SDLMath::MathUtil::ptEstimateFromRadius(center.rt());
             float eta = hitC.eta();
             float phi = hitB.phi();
             
@@ -2229,11 +2229,11 @@ void fillOutputBranches_v2(SDL::Event<SDL::Acc>* event)
             ana.tx->pushbackToBranch<int>("t3_lsIdx0", ls_idx_map[lsIdxs[0]]);
             ana.tx->pushbackToBranch<int>("t3_lsIdx1", ls_idx_map[lsIdxs[1]]);
             // Computing line segment pt estimate (assuming beam spot is at zero)
-            SDL::CPU::Hit hitA(hitsInGPU.xs[hit_idx[0]], hitsInGPU.ys[hit_idx[0]], hitsInGPU.zs[hit_idx[0]]);
-            SDL::CPU::Hit hitB(hitsInGPU.xs[hit_idx[2]], hitsInGPU.ys[hit_idx[2]], hitsInGPU.zs[hit_idx[2]]);
-            SDL::CPU::Hit hitC(hitsInGPU.xs[hit_idx[4]], hitsInGPU.ys[hit_idx[4]], hitsInGPU.zs[hit_idx[4]]);
-            SDL::CPU::Hit center = SDL::CPU::MathUtil::getCenterFromThreePoints(hitA, hitB, hitC);
-            float pt = SDL::CPU::MathUtil::ptEstimateFromRadius(center.rt());
+            SDLMath::Hit hitA(hitsInGPU.xs[hit_idx[0]], hitsInGPU.ys[hit_idx[0]], hitsInGPU.zs[hit_idx[0]]);
+            SDLMath::Hit hitB(hitsInGPU.xs[hit_idx[2]], hitsInGPU.ys[hit_idx[2]], hitsInGPU.zs[hit_idx[2]]);
+            SDLMath::Hit hitC(hitsInGPU.xs[hit_idx[4]], hitsInGPU.ys[hit_idx[4]], hitsInGPU.zs[hit_idx[4]]);
+            SDLMath::Hit center = SDLMath::MathUtil::getCenterFromThreePoints(hitA, hitB, hitC);
+            float pt = SDLMath::MathUtil::ptEstimateFromRadius(center.rt());
             float eta = hitC.eta();
             float phi = hitA.phi();
             ana.tx->pushbackToBranch<float>("t3_pt", pt);
@@ -2355,19 +2355,19 @@ void fillOutputBranches_v2(SDL::Event<SDL::Acc>* event)
             ana.tx->pushbackToBranch<int>("t5_t3Idx0", t3_idx_map[t3Idxs[0]]);
             ana.tx->pushbackToBranch<int>("t5_t3Idx1", t3_idx_map[t3Idxs[1]]);
             // Computing line segment pt estimate (assuming beam spot is at zero)
-            SDL::CPU::Hit hitA(hitsInGPU.xs[hit_idx[0]], hitsInGPU.ys[hit_idx[0]], hitsInGPU.zs[hit_idx[0]]);
-            SDL::CPU::Hit hitB(hitsInGPU.xs[hit_idx[2]], hitsInGPU.ys[hit_idx[2]], hitsInGPU.zs[hit_idx[2]]);
-            SDL::CPU::Hit hitC(hitsInGPU.xs[hit_idx[4]], hitsInGPU.ys[hit_idx[4]], hitsInGPU.zs[hit_idx[4]]);
-            SDL::CPU::Hit hitD(hitsInGPU.xs[hit_idx[6]], hitsInGPU.ys[hit_idx[6]], hitsInGPU.zs[hit_idx[6]]);
-            SDL::CPU::Hit hitE(hitsInGPU.xs[hit_idx[8]], hitsInGPU.ys[hit_idx[8]], hitsInGPU.zs[hit_idx[8]]);
-            SDL::CPU::Hit center = SDL::CPU::MathUtil::getCenterFromThreePoints(hitA, hitB, hitC);
-            float pt = SDL::CPU::MathUtil::ptEstimateFromRadius(center.rt());
-            SDL::CPU::Hit center2 = SDL::CPU::MathUtil::getCenterFromThreePoints(hitB, hitC, hitD);
-            float pt2 = SDL::CPU::MathUtil::ptEstimateFromRadius(center2.rt());
-            SDL::CPU::Hit center3 = SDL::CPU::MathUtil::getCenterFromThreePoints(hitC, hitD, hitE);
-            float pt3 = SDL::CPU::MathUtil::ptEstimateFromRadius(center3.rt());
-            SDL::CPU::Hit center4 = SDL::CPU::MathUtil::getCenterFromThreePoints(hitA, hitC, hitE);
-            float pt4 = SDL::CPU::MathUtil::ptEstimateFromRadius(center4.rt());
+            SDLMath::Hit hitA(hitsInGPU.xs[hit_idx[0]], hitsInGPU.ys[hit_idx[0]], hitsInGPU.zs[hit_idx[0]]);
+            SDLMath::Hit hitB(hitsInGPU.xs[hit_idx[2]], hitsInGPU.ys[hit_idx[2]], hitsInGPU.zs[hit_idx[2]]);
+            SDLMath::Hit hitC(hitsInGPU.xs[hit_idx[4]], hitsInGPU.ys[hit_idx[4]], hitsInGPU.zs[hit_idx[4]]);
+            SDLMath::Hit hitD(hitsInGPU.xs[hit_idx[6]], hitsInGPU.ys[hit_idx[6]], hitsInGPU.zs[hit_idx[6]]);
+            SDLMath::Hit hitE(hitsInGPU.xs[hit_idx[8]], hitsInGPU.ys[hit_idx[8]], hitsInGPU.zs[hit_idx[8]]);
+            SDLMath::Hit center = SDLMath::MathUtil::getCenterFromThreePoints(hitA, hitB, hitC);
+            float pt = SDLMath::MathUtil::ptEstimateFromRadius(center.rt());
+            SDLMath::Hit center2 = SDLMath::MathUtil::getCenterFromThreePoints(hitB, hitC, hitD);
+            float pt2 = SDLMath::MathUtil::ptEstimateFromRadius(center2.rt());
+            SDLMath::Hit center3 = SDLMath::MathUtil::getCenterFromThreePoints(hitC, hitD, hitE);
+            float pt3 = SDLMath::MathUtil::ptEstimateFromRadius(center3.rt());
+            SDLMath::Hit center4 = SDLMath::MathUtil::getCenterFromThreePoints(hitA, hitC, hitE);
+            float pt4 = SDLMath::MathUtil::ptEstimateFromRadius(center4.rt());
             float ptavg = (pt + pt2 + pt3 + pt4) / 4;
             float eta = hitE.eta();
             float phi = hitA.phi();
