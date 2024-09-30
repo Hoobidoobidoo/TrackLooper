@@ -1089,7 +1089,7 @@ std::tuple<float, float, float, vector<unsigned int>, vector<unsigned int>> pars
     SDL::trackCandidatesBuffer<alpaka::DevCpu>& trackCandidatesInGPU = (*event->getTrackCandidates());
     SDL::tripletsBuffer<alpaka::DevCpu>& tripletsInGPU = (*event->getTriplets());
     SDL::segmentsBuffer<alpaka::DevCpu>& segmentsInGPU = (*event->getSegments());
-
+    const float kRinv1GeVf = (2.99792458e-3 * 3.8);
     //
     // pictorial representation of a pT3
     //
@@ -1098,31 +1098,19 @@ std::tuple<float, float, float, vector<unsigned int>, vector<unsigned int>> pars
     // pLS            01    23    45               (anchor hit of a minidoublet is always the first of the pair)
     // ****           oo -- oo -- oo               pT3
     unsigned int pT3 = trackCandidatesInGPU.directObjectIndices[idx];
-    std::vector<unsigned int> Hits = getOuterTrackerHitsFrompT3(event, pT3);
-    unsigned int Hit_0 = Hits[0];
-    unsigned int Hit_4 = Hits[4];
-
+    unsigned int pLS = getPixelLSFrompT3(event, pT3);
     unsigned int T3 = getT3FrompT3(event, pT3);
 
-    unsigned int pLS = getPixelLSFrompT3(event, pT3);
-
-    const float kRinv1GeVf = (2.99792458e-3 * 3.8);
-    const float k2Rinv1GeVf = kRinv1GeVf / 2.;
-    const float dr = sqrt(pow(hitsInGPU.xs[Hit_4] - hitsInGPU.xs[Hit_0], 2) + pow(hitsInGPU.ys[Hit_4] - hitsInGPU.ys[Hit_0], 2));
-    float betaIn   = __H2F(tripletsInGPU.betaIn[T3]);
-    float betaOut  = __H2F(tripletsInGPU.betaOut[T3]);
-    const float pt_T3 = abs(dr * k2Rinv1GeVf / sin((betaIn + betaOut) / 2.));
-
     // pixel pt
-    const int seedIdx = segmentsInGPU.seedIdx[pLS];
-    const float pt_pLS = trk.see_pt()[seedIdx];
-    const float eta_pLS = trk.see_eta()[seedIdx];
-    const float phi_pLS = trk.see_phi()[seedIdx];
+    const float pt_pLS = segmentsInGPU.ptIn[pLS];
+    const float eta_pLS = segmentsInGPU.eta[pLS];
+    const float phi_pLS = segmentsInGPU.phi[pLS];
+    float pt_T3 = tripletsInGPU.circleRadius[T3] * 2 * k2Rinv1GeVf;
 
     // average pt
-    const float pt = (pt_pLS + pt_T3) / 2.;
+    const float pt = (pt_pLS+pt_T3)/2;
 
-    // Form the hit idx/type vector
+    // Form the hit idx type vector
     std::vector<unsigned int> hit_idx = getHitIdxsFrompT3(event, pT3);
     std::vector<unsigned int> hit_type = getHitTypesFrompT3(event, pT3);
 
