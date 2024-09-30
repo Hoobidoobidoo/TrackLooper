@@ -1079,7 +1079,7 @@ std::tuple<float, float, float, vector<unsigned int>, vector<unsigned int>> pars
     const float pt_pLS = segmentsInGPU.ptIn[pLS];
     const float eta_pLS = segmentsInGPU.eta[pLS];
     const float phi_pLS = segmentsInGPU.phi[pLS];
-    float pt_T3 = tripletsInGPU.circleRadius[T3] * 2 * k2Rinv1GeVf;
+    float pt_T3 = tripletsInGPU.circleRadius[T3] * 2 * SDL::k2Rinv1GeVf;
 
     // average pt
     const float pt = (pt_pLS+pt_T3)/2;
