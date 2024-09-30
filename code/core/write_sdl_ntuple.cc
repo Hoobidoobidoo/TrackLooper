@@ -1060,10 +1060,11 @@ std::tuple<float, float, float, vector<unsigned int>, vector<unsigned int>> pars
 std::tuple<float, float, float, vector<unsigned int>, vector<unsigned int>> parsepT3(SDL::Event<SDL::Acc>* event, unsigned int idx)
 {
    // Get relevant information
+    std::cout << "parseT3 starting" << std::endl;
     SDL::trackCandidatesBuffer<alpaka::DevCpu>& trackCandidatesInGPU = (*event->getTrackCandidates());
     SDL::tripletsBuffer<alpaka::DevCpu>& tripletsInGPU = (*event->getTriplets());
     SDL::segmentsBuffer<alpaka::DevCpu>& segmentsInGPU = (*event->getSegments());
-    const float kRinv1GeVf = (2.99792458e-3 * 3.8);
+    // const float kRinv1GeVf = (2.99792458e-3 * 3.8);
     //
     // pictorial representation of a pT3
     //
@@ -1087,7 +1088,7 @@ std::tuple<float, float, float, vector<unsigned int>, vector<unsigned int>> pars
     // Form the hit idx type vector
     std::vector<unsigned int> hit_idx = getHitIdxsFrompT3(event, pT3);
     std::vector<unsigned int> hit_type = getHitTypesFrompT3(event, pT3);
-
+    std::cout << "parseT3 ending" << std::endl;
     return {pt, eta_pLS, phi_pLS, hit_idx, hit_type};
 
 }
