@@ -1060,7 +1060,7 @@ std::tuple<float, float, float, vector<unsigned int>, vector<unsigned int>> pars
 std::tuple<float, float, float, vector<unsigned int>, vector<unsigned int>> parsepT3(SDL::Event<SDL::Acc>* event, unsigned int idx)
 {
    // Get relevant information
-    std::cout << "parseT3 starting" << std::endl;
+
     SDL::trackCandidatesBuffer<alpaka::DevCpu>& trackCandidatesInGPU = (*event->getTrackCandidates());
     SDL::tripletsBuffer<alpaka::DevCpu>& tripletsInGPU = (*event->getTriplets());
     SDL::segmentsBuffer<alpaka::DevCpu>& segmentsInGPU = (*event->getSegments());

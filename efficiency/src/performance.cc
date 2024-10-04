@@ -51,7 +51,7 @@ int main(int argc, char** argv)
                     SimTrackSetDefinition(/* name  */ TString("TC_") + selnames[isel],
                                           /* pdgid */ pdgid,
                                           /* q     */ charge,
-                                          /* pass  */ [&](unsigned int isim) {return sdl.sim_tcIdx().at(isim) >= 0;},
+                                          /* pass  */ [&](unsigned int isim) {return sdl.sim_TC_matched().at(isim) > 0;},
                                           /* sel   */ sels[isel]
                                          )
                     );
@@ -59,7 +59,7 @@ int main(int argc, char** argv)
                     SimTrackSetDefinition(/* name  */ TString("pT5_") + selnames[isel],
                                           /* pdgid */ pdgid,
                                           /* q     */ charge,
-                                          /* pass  */ [&](unsigned int isim) {return sdl.sim_tcIdx().at(isim) >= 0 ? sdl.tc_type().at(sdl.sim_tcIdx().at(isim)) == pT5 : false;},
+                                          /* pass  */ [&](unsigned int isim) {return sdl.sim_TC_matched_mask().at(isim) & (1 << pT5);},
                                           /* sel   */ sels[isel]
                                          )
                     );
@@ -67,7 +67,7 @@ int main(int argc, char** argv)
                     SimTrackSetDefinition(/* name  */ TString("pT3_") + selnames[isel],
                                           /* pdgid */ pdgid,
                                           /* q     */ charge,
-                                          /* pass  */ [&](unsigned int isim) {return sdl.sim_tcIdx().at(isim) >= 0 ? sdl.tc_type().at(sdl.sim_tcIdx().at(isim)) == pT3 : false;},
+                                          /* pass  */ [&](unsigned int isim) {return sdl.sim_TC_matched_mask().at(isim) & (1 << pT3);},
                                           /* sel   */ sels[isel]
                                          )
                     );
@@ -75,7 +75,7 @@ int main(int argc, char** argv)
                     SimTrackSetDefinition(/* name  */ TString("T5_") + selnames[isel],
                                           /* pdgid */ pdgid,
                                           /* q     */ charge,
-                                          /* pass  */ [&](unsigned int isim) {return sdl.sim_tcIdx().at(isim) >= 0 ? sdl.tc_type().at(sdl.sim_tcIdx().at(isim)) == T5 : false;},
+                                          /* pass  */ [&](unsigned int isim) {return sdl.sim_TC_matched_mask().at(isim) & (1 << T5);},
                                           /* sel   */ sels[isel]
                                          )
                     );
@@ -83,7 +83,7 @@ int main(int argc, char** argv)
                     SimTrackSetDefinition(/* name  */ TString("pLS_") + selnames[isel],
                                           /* pdgid */ pdgid,
                                           /* q     */ charge,
-                                          /* pass  */ [&](unsigned int isim) {return sdl.sim_tcIdx().at(isim) >= 0 ? sdl.tc_type().at(sdl.sim_tcIdx().at(isim)) == pLS : false;},
+                                          /* pass  */ [&](unsigned int isim) {return sdl.sim_TC_matched_mask().at(isim) & (1 << pLS);},
                                           /* sel   */ sels[isel]
                                          )
                     );
