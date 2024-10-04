@@ -2,6 +2,7 @@
 //________________________________________________________________________________________________________________________________
 void createOutputBranches()
 {
+    createRequiredOutputBranches();
     createOutputBranches_v2();
 }
 
@@ -13,6 +14,7 @@ void createOutputBranches_v1()
 }
 void fillOutputBranches(SDL::Event<SDL::Acc>* event)
 {
+    fillOutputBranches_v1(event);
     fillOutputBranches_v2(event);
 }
 //________________________________________________________________________________________________________________________________
