@@ -1,5 +1,6 @@
 #ifndef MiniDoublet_cuh
 #define MiniDoublet_cuh
+#define OUTPUT_MD_CUTS
 
 #ifdef LST_IS_CMSSW_PACKAGE
 #include "RecoTracker/LSTCore/interface/alpaka/Constants.h"

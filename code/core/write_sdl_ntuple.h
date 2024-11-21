@@ -13,6 +13,7 @@
 
 // Common
 void createOutputBranches();
+void createOutputBranches_v1();
 void createRequiredOutputBranches();
 void createOptionalOutputBranches();
 void createGnnNtupleBranches();
@@ -50,5 +51,9 @@ void printTCs(SDL::Event<SDL::Acc>* event);
 
 // Print anomalous multiplicities
 void debugPrintOutlierMultiplicities(SDL::Event<SDL::Acc>* event);
+
+// LSTOD
+void createOutputBranches_v2();
+void fillOutputBranches_v2(SDL::Event<SDL::Acc>* event);
 
 #endif
